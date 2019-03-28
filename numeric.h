@@ -22,6 +22,8 @@ int StringToNumeric(const char* pStr, const NumericSchema schema, short* pdata);
 NumericSchema PrecisionScaleToNumericSchema(short precision, short scale);
 NumericSchema mergeSchema(NumericSchema lschema, NumericSchema rschema);
 
+NumericSchema estimateSchemaForAdd(NumericSchema aschema, short * a, NumericSchema bschema, short * b);
+
 int add(NumericSchema aschema, short * a, NumericSchema bschema, short * b, short * c);
 int substract(NumericSchema aschema, short * a, NumericSchema bschema, short * b, short * c);
 

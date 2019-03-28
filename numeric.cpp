@@ -201,7 +201,7 @@ int add(NumericSchema aschema, short * a, NumericSchema bschema, short * b, shor
     return carry;
 }
 
-int add(NumericSchema aschema, short * a, NumericSchema bschema, short * b, short * c)
+int substract(NumericSchema aschema, short * a, NumericSchema bschema, short * b, short * c)
 {
     NumericSchema ms = mergeSchema(aschema, bschema);
     short carry = 0;

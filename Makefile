@@ -6,6 +6,9 @@ OBJS=numeric.o
 %.o: %.cpp $(DEPS)
 	$(CC) -c -g -o $@ $< $(CFLAGS)
 
+sub: $(OBJS) sub.o
+	$(CC) -o sub numeric.o sub.o  -lstdc++
+
 add: $(OBJS) add.o
 	$(CC) -o add numeric.o add.o  -lstdc++
 
@@ -14,4 +17,4 @@ convert: $(OBJS)  convert.o
 
 
 clean:
-	rm *.o convert add 	
+	rm *.o convert add 	sub
