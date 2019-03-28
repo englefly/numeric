@@ -251,3 +251,26 @@ int substract(NumericSchema aschema, short * a, NumericSchema bschema, short * b
     }
     return carry;
 }
+
+int multiply(NumericSchema aschema, short * a, NumericSchema bschema, short * b, NumericSchema cschema, short * c)
+{
+    short blen = bschema.len();
+    short alen = aschema.len();
+    short clen = cschema.len();
+
+    int carry = 0;
+    for(int i=0; i<clen; i++) c[i] = 0; 
+
+    for(int i = 0; i < blen; i ++)
+    {
+        int y = (int) b[ blen - i - 1 ];
+        for (int j=0; j<alen; j++)
+        {
+            int x = (int) a[ alen -j - 1];
+            int z = x*y;
+            c[clen - i - j - 1] = c[clen - i - j - 1] + z % 10000 + carry ; //z后4位
+            c[clen - i - j - 2] = z / 10000; //z前4位
+            
+        }
+    }
+}

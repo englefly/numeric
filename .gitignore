@@ -1,5 +1,4 @@
 Debug/*
 *.o
-add
 .vscode/*
-sub
+*.exe

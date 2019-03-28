@@ -27,6 +27,10 @@ NumericSchema estimateSchemaForAdd(NumericSchema aschema, short * a, NumericSche
 int add(NumericSchema aschema, short * a, NumericSchema bschema, short * b, short * c);
 int substract(NumericSchema aschema, short * a, NumericSchema bschema, short * b, short * c);
 
+
+int multiply(NumericSchema aschema, short * a, NumericSchema bschema, short * b, NumericSchema cschema, short * c);
+
+
 __inline__ short max(short a, short b)
 {
     return a>b ? a : b;
