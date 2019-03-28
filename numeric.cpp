@@ -3,248 +3,251 @@
 
 #include "numeric.h"
 
-void NumericToString(const NumericSchema schema, PtrNumeric pdata, char* pStr)
+void NumericToString(const NumericSchema schema, short * pdata, char* pStr)
 {
-    for(int i=0; i<schema.intLength; i++)
+    int precision = schema.fracLength + schema.intLength;
+    short * frac = pdata + schema.intLength; //小数部分的起点
+    short * head = pdata;
+    //skip head 0
+    for (int i=0; i<precision && *head == 0 ; i++)
     {
-        sprintf(pStr, "%04hu", *pdata);
-        pdata ++;
+        head ++;
+    }
+    if ( *head == 0 ) return ;//err code;
+
+    bool negtive = *head < 0;
+    if (negtive) *pStr ++ = '-';
+    while(head < frac)
+    {
+        sprintf(pStr, "%04hd", negtive? -1 * *head : *head);
+        head ++;
         pStr = pStr + 4;
     }
     
     *pStr = '.';
     pStr ++;
-    for(int i=0; i<schema.decimalLength; i++)
+    for(int i=0; i<schema.fracLength; i++)
     {
-        sprintf(pStr, "%04hu", *pdata);
-        pdata ++;
+        sprintf(pStr, "%04hd", negtive? -1 * *head : *head);
+        head ++;
         pStr = pStr + 4;
     }
     *pStr = 0;
     
 }
 
-void StringToNumeric(const char* pStr, const NumericSchema *schema, PtrNumeric pdata)
+/**
+ * return 0, if converted
+ *      -1, numeric field overflow
+ *      -2, 
+ **/
+int StringToNumeric(const char* pStr, const NumericSchema schema, short * pdata)
 {
-    
+    for( int i=0; i<schema.fracLength + schema.intLength; i++)
+    {
+        *(pdata + i)  = 0;
+    }
+    short * intPart = pdata + schema.intLength - 1; //整数部分从低位向高位填写
+    short * fracPart = pdata + schema.intLength; //小数部分从高位向低位填写
+    const char * cursor = pStr;
+    bool negtive = (*pStr == '-');
+    const char * head = negtive ? pStr + 1 : pStr;
+    const char * point = head; // move to end of integer part
+    while( *point != '.' && *point != 0)
+    {
+        point ++;
+    }
+    const char * end = point;
+    while( *end != 0) end ++;
+
+    int loopcount = 0;
+    //convert integer part
+    cursor = point;
+    while (cursor > head)
+    {
+        short val = 0;
+
+        cursor --;
+        if (cursor >= head) val += *cursor - 48;
+
+        cursor --;
+        if (cursor >= head) val += (*cursor  - 48) * 10;
+
+        cursor --;
+        if (cursor >= head) val += (*cursor  - 48) * 100;
+
+        cursor --;
+        if (cursor >= head) val += (*cursor  - 48) * 1000;
+
+        if (intPart < pdata) return -1; //numeric field overflow
+        *intPart = negtive ? -1 * val : val;
+        intPart --;
+    }
+
+    //convert fractional part
+    loopcount = 0;
+    cursor = point;
+    while (cursor < end && loopcount < schema.fracLength)
+    {
+        short val = 0;
+
+        cursor ++;
+        if (cursor < end) val += (*cursor  - 48) * 1000;
+
+        cursor ++;
+        if (cursor < end) val += (*cursor  - 48) * 100;
+
+        cursor ++;
+        if (cursor < end) val += (*cursor  - 48) * 10;
+
+        cursor ++;
+        if (cursor < end) val += (*cursor  - 48);
+
+        *fracPart = negtive ? -1 * val : val;
+        fracPart ++;
+
+        loopcount ++;
+    }
+    return 0;
 }
 
-unsigned short max(unsigned short a, unsigned short b)
-{
-    return a>b ? a : b;
-}
+
 
 NumericSchema mergeSchema(NumericSchema lschema, NumericSchema rschema)
 {
     NumericSchema schema = { max(lschema.intLength, rschema.intLength),
-             max(lschema.decimalLength, rschema.decimalLength),
+             max(lschema.fracLength, rschema.fracLength),
             };
     return schema;
 }
 
-int add(NumericSchema schema, PtrNumeric ldata, PtrNumeric rdata, PtrNumeric odata)
+//index: 0 based
+short GetValByIndex(NumericSchema schema, short * a, NumericSchema resSchema, int index)
 {
-    unsigned short count = schema.decimalLength + schema.intLength;
-    int carry = 0;
-    for (int i = count - 1; i >= 0; i-- )
+    int n = index - resSchema.intLength;
+    if (n >= 0)
     {
-        int res = (int) *(ldata + i) + (int) *(rdata + i) + carry;
-        printf(">>>[%d] %d = %d + %d + %d\n", i, res, (int) *(ldata + i), (int) *(rdata + i), carry);
-        if (res > 10000) 
-        {
-            carry = 1;
-            res -= 10000;
-        }
-        else carry = 0;
-        *(odata + i) = (unsigned short) res;
-        printf("### %hu\n", *(odata + i));
+        if (n >= schema.fracLength) return 0;
+        return a[schema.intLength + n];
+    }else{
+        if (schema.intLength + n < 0) return 0; 
+        return a[schema.intLength + n];
     }
-    if (carry) printf("overflow...\n");
-    return carry;
 }
 
 /**
- * 
- *  alen >= blen
- *  纯小数部分相加，返回值表示是否进位
+ * return 1 if positive
+ *        -1 if negtive
+ *        0 if c == 0
  **/
-int addDecimalPart(unsigned short alen, PtrNumeric a, unsigned short blen, PtrNumeric b, PtrNumeric c)
+int GetSign(NumericSchema schema, short * c)
 {
-    for ( int i = 0; i < alen - blen; i++ )
+    for( int i=0; i<schema.len(); i++)
     {
-        *( c + alen - i - 1) = *( a + alen - i - 1);
+        if (c[i]>0) return 1;
+        if (c[i]<0) return -1;
     }
-    int carry = 0;
-    for ( int i = 0; i < blen; i++ )
-    {
-        int res = (int) *(a + blen - i - 1) + (int) *(b + blen - i - 1) + carry;
-        if (res  >= 10000)
-        {
-            res -= 10000;
-            carry = 1;
-        }
-        else
-        {
-            carry = 0;
-        }
-        *(c + blen - i - 1) = (unsigned short) res;
-    }
-    return carry;
-}
-
-/**
- * alen >= blen
- * return -1, if overflow
- */
-int addIntPart(unsigned short alen, PtrNumeric a, unsigned short blen, PtrNumeric b, int carry, PtrNumeric c)
-{
-    PtrNumeric atail = a + alen - 1;
-    PtrNumeric btail = b + blen - 1;
-    PtrNumeric ctail = c + alen - 1;
-    for( int i = 0; i < blen; i++ )
-    {
-        int x = (int) *(btail) + (int) *(atail) + carry;
-        if (x >= 10000)
-        {
-            carry = 1;
-            x -= 10000;
-        }else{
-            carry = 0;
-        }
-        *ctail = (unsigned short)x;
-        atail --;
-        btail --;
-        ctail --;
-    }
-    for( int i = 0; i < alen - blen; i++)
-    {
-        int x = (int) *(atail) + carry;
-        if (x >= 10000)
-        {
-            carry = 1;
-            x -= 10000;
-        }else{
-            carry = 0;
-        }
-        *ctail = (unsigned short)x;
-        atail --;
-        ctail --;
-    }
-    return carry;
-}
-
-int add(NumericSchema aschema, PtrNumeric a, NumericSchema bschema, PtrNumeric b, PtrNumeric c)
-{
-    PtrNumeric adecimal = a + aschema.intLength;
-    PtrNumeric bdecimal = b + bschema.intLength;
-    PtrNumeric cdecimal = c + (aschema.intLength >= bschema.intLength ? aschema.intLength : bschema.intLength);
-    int carry = 0;
-    if ( aschema.decimalLength >= bschema.decimalLength ){
-        carry = addDecimalPart(aschema.decimalLength, adecimal, bschema.decimalLength, bdecimal, cdecimal);
-    }else{
-        carry = addDecimalPart(bschema.decimalLength, bdecimal, aschema.decimalLength, adecimal, cdecimal);
-    }
-
-    if ( aschema.intLength >= bschema.intLength ){
-        carry = addIntPart(aschema.intLength, a, bschema.intLength, b, carry, c);
-    }else{
-        carry = addIntPart(bschema.intLength, b, aschema.intLength, a, carry, c);
-    }
-    return carry;
-}
-
-//同schema相加
-void test1()
-{
-    unsigned short u = 123;
-    int x = (int) u;
-    printf("x=%d\n", x);
-    x=0x10000;
-    u = (unsigned short)x;
-    printf("u=%hu\n", u);
-
-    unsigned short a[3];
-    a[0] = 432;
-    a[1] =   33;
-    a[2] = 4000;
-    unsigned short b[3];
-    b[0] = 77;
-    b[1] = 9876;
-    b[2] = 8200;
-    
-    unsigned short c[3];
-    c[0] = 0;
-    c[1] = 0;
-    c[2] = 0;
-
-    char out[100];
-    NumericSchema schema = {2, 1};
-    for(int i=0; i<100; i++)
-        out[i]=0;
-    
-    add(schema, a, b, c);
-    NumericToString( schema, c, out);
-}
-
-
-int test_decimaladd()
-{
-    unsigned short a[3];
-    a[0] = 9999;
-    a[1] = 9999;
-    a[2] = 9999;
-    unsigned short b[2];
-    b[0] = 0;
-    b[1] = 1;
- 
-    
-    unsigned short c[3];
-    c[0] = 0;
-    c[1] = 0;
-    c[2] = 0;
-
-    char out[100];
-    NumericSchema schema = {0, 3};
-    for(int i=0; i<100; i++)
-        out[i]=0;
-    
-    int carry = addDecimalPart(3, a, 2, b, c);
-    for(int i=0; i<3; i++)
-    {
-        printf("c[%d] = %hu \n", i, c[i]);
-    }
-
-    NumericToString(schema, c, out);
-    printf("out: %d%s\n", carry, out);
     return 0;
 }
 
-int main()
+int add(NumericSchema aschema, short * a, NumericSchema bschema, short * b, short * c)
 {
-    unsigned short a[3];
-    a[0] = 1234;
-    a[1] = 6767;
-    a[2] = 44;
-    unsigned short b[2];
-    b[0] = 3233;
-    b[1] = 66;
- 
-    unsigned short c[3];
-    c[0] = 0;
-    c[1] = 0;
-    c[2] = 0;
+    NumericSchema ms = mergeSchema(aschema, bschema);
+    short carry = 0;
+    for (int i = ms.len() - 1; i >=0; i--)
+    {
+        int v = GetValByIndex(aschema, a, ms, i) + GetValByIndex(bschema, b, ms, i) + carry;
+        if (v >= 10000){
+            v = v - 10000;
+            carry = 1;
+        }else if (v <= -10000){
+            v = v + 10000;
+            carry = -1;
+        }else{
+            carry = 0;
+        }
+        c[i] = v;
+    }
 
-    NumericSchema aschema = {2, 1};
-    NumericSchema bschema = {1, 1};
-    NumericSchema cschema = {2 ,1};
+    // positive or negtive
+    int borrow = 0;
+    int sign = GetSign(ms, c);
+    const short clen = ms.len();
+    if (sign > 0){
+        for(int i = clen - 1; i >= 0; i--)
+        {
+            c[i] = c[i] - borrow;
+            if ( c[i] < 0)
+            {
+                borrow = 1;
+                c[i] = 10000 + c[i];
+            }else{
+                borrow = 0;
+            }
+        }
+    }else if(sign < 0){
+        for(int i = clen - 1; i >= 0; i--)
+        {
+            c[i] = c[i] + borrow;
+            if ( c[i] > 0)
+            {
+                borrow = 1;
+                c[i] = -10000 + c[i];
+            }else{
+                borrow = 0;
+            }
+        }
+    }
+    return carry;
+}
 
-    char out[100];
-    NumericToString(aschema, a, out);
-    printf("%s + ", out);
-    NumericToString(bschema, b, out);
-    printf("%s = ", out);
-    int carry = add(aschema, a, bschema, b, c);
-    NumericToString(cschema, c, out);
-    printf("%s\n", out);
-    return 0;
+int add(NumericSchema aschema, short * a, NumericSchema bschema, short * b, short * c)
+{
+    NumericSchema ms = mergeSchema(aschema, bschema);
+    short carry = 0;
+    for (int i = ms.len() - 1; i >=0; i--)
+    {
+        int v = GetValByIndex(aschema, a, ms, i) - GetValByIndex(bschema, b, ms, i) + carry;
+        if (v >= 10000){
+            v = v - 10000;
+            carry = 1;
+        }else if (v <= -10000){
+            v = v + 10000;
+            carry = -1;
+        }else{
+            carry = 0;
+        }
+        c[i] = v;
+    }
+
+    // positive or negtive
+    int borrow = 0;
+    int sign = GetSign(ms, c);
+    const short clen = ms.len();
+    if (sign > 0){
+        for(int i = clen - 1; i >= 0; i--)
+        {
+            c[i] = c[i] - borrow;
+            if ( c[i] < 0)
+            {
+                borrow = 1;
+                c[i] = 10000 + c[i];
+            }else{
+                borrow = 0;
+            }
+        }
+    }else if(sign < 0){
+        for(int i = clen - 1; i >= 0; i--)
+        {
+            c[i] = c[i] + borrow;
+            if ( c[i] > 0)
+            {
+                borrow = 1;
+                c[i] = -10000 + c[i];
+            }else{
+                borrow = 0;
+            }
+        }
+    }
+    return carry;
 }
