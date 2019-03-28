@@ -6,6 +6,9 @@ OBJS=numeric.o
 %.o: %.cpp $(DEPS)
 	$(CC) -c -g -o $@ $< $(CFLAGS)
 
+multi:$(OBJS) multi.o
+	$(CC) -o multi.exe numeric.o multi.o  -lstdc++
+
 sub: $(OBJS) sub.o
 	$(CC) -o sub.exe numeric.o sub.o  -lstdc++
 

@@ -252,6 +252,17 @@ int substract(NumericSchema aschema, short * a, NumericSchema bschema, short * b
     return carry;
 }
 
+NumericSchema estimateSchemaForMultiply(NumericSchema aschema, short * a, NumericSchema bschema, short * b)
+{
+    short az = 0; //a 中整数部分的实际位数。跳过开头的0
+    for ( ; az<aschema.intLength && a[az]; az++)
+    { ; }
+    az = aschema.intLength - az;
+
+    short af = 0; //a 中小数部分实际位数， 跳过尾部的0
+    short* p = a + aschema.intLength;
+    
+}
 int multiply(NumericSchema aschema, short * a, NumericSchema bschema, short * b, NumericSchema cschema, short * c)
 {
     short blen = bschema.len();
@@ -267,10 +278,10 @@ int multiply(NumericSchema aschema, short * a, NumericSchema bschema, short * b,
         for (int j=0; j<alen; j++)
         {
             int x = (int) a[ alen -j - 1];
-            int z = x*y;
-            c[clen - i - j - 1] = c[clen - i - j - 1] + z % 10000 + carry ; //z后4位
-            c[clen - i - j - 2] = z / 10000; //z前4位
-            
+            int z = x * y + carry;
+            c[clen - i - j - 1] = c[clen - i - j - 1] + z % 10000; //z后4位
+            c[clen - i - j - 2] = c[clen - i - j - 2] + z / 10000; //z前4位        
         }
     }
+
 }

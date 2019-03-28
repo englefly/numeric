@@ -24,6 +24,9 @@ NumericSchema mergeSchema(NumericSchema lschema, NumericSchema rschema);
 
 NumericSchema estimateSchemaForAdd(NumericSchema aschema, short * a, NumericSchema bschema, short * b);
 
+NumericSchema estimateSchemaForMultiply(NumericSchema aschema, short * a, NumericSchema bschema, short * b);
+
+
 int add(NumericSchema aschema, short * a, NumericSchema bschema, short * b, short * c);
 int substract(NumericSchema aschema, short * a, NumericSchema bschema, short * b, short * c);
 
