@@ -279,9 +279,22 @@ int multiply(NumericSchema aschema, short * a, NumericSchema bschema, short * b,
         {
             int x = (int) a[ alen -j - 1];
             int z = x * y + carry;
-            c[clen - i - j - 1] = c[clen - i - j - 1] + z % 10000; //z后4位
-            c[clen - i - j - 2] = c[clen - i - j - 2] + z / 10000; //z前4位        
+            carry = 0;
+            int lower = c[clen - i - j - 1] + z % 10000; //z后4位
+            if (lower >= 10000 || lower <= -10000) {
+                carry = lower / 10000;
+                lower = lower % 10000;
+            }
+            c[clen - i - j - 1] = lower;
+            int higher = c[clen - i - j - 2] + z / 10000 + carry; //z前4位
+            carry = 0;
+            if (higher >= 10000 || higher <= -10000) 
+            {
+                carry = higher / 10000;
+                higher = higher % 10000;
+            }
+            c[clen - i - j - 2] = higher; 
         }
     }
-
+    return carry;
 }
