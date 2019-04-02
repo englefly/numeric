@@ -33,6 +33,7 @@ int substract(NumericSchema aschema, short * a, NumericSchema bschema, short * b
 
 int multiply(NumericSchema aschema, short * a, NumericSchema bschema, short * b, NumericSchema cschema, short * c);
 
+double division(NumericSchema aschema, short * a, NumericSchema bschema, short *b);
 
 __inline__ short max(short a, short b)
 {

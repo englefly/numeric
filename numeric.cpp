@@ -298,3 +298,33 @@ int multiply(NumericSchema aschema, short * a, NumericSchema bschema, short * b,
     }
     return carry;
 }
+
+
+double NumericToDouble(NumericSchema schema, short * a)
+{
+    double d = 0.0;
+    double degree = 1.0;
+    for( int i=0; i<schema.intLength; i++)
+    {
+        d += (a[schema.intLength - i - 1]) * degree;
+        degree *= 10000;
+    }
+    
+    degree = 0.0001;
+    for( int i = 0; i<schema.fracLength; i++)
+    {
+        d += a[schema.intLength + i] * degree;
+        degree *= 0.0001;
+    }
+    printf(">>> %lf\n", d);
+    return d;
+}
+/**
+ * 将numeric转换为double，然后两个double相除
+ **/
+double division(NumericSchema aschema, short * a, NumericSchema bschema, short *b)
+{
+    double ad = NumericToDouble(aschema, a); //double for a;
+    double bd = NumericToDouble(bschema, b); //double for b;
+    return ad/bd;
+}
